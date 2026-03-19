@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-workflow-frontend
+  namespace: ai-workflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-workflow-frontend
+  template:
+    metadata:
+      labels:
+        app: ai-workflow-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: your-registry/ai-workflow-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

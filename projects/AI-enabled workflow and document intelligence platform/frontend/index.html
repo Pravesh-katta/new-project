@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Workflow and Document Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-glow"></div>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Project 01</p>
+        <h1>AI-enabled Workflow and Document Intelligence</h1>
+        <p class="hero-subtitle">
+          Backend-connected UI for workflows, document ingestion, background indexing, and search.
+        </p>
+      </div>
+      <div class="hero-status">
+        <span class="pulse"></span>
+        <span id="healthBadge">Health: Unknown</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel animate delay-1">
+        <h2>Connection</h2>
+        <form id="connectionForm" class="form-stack">
+          <label for="apiBaseInput">API Base URL</label>
+          <input id="apiBaseInput" type="text" placeholder="http://127.0.0.1:8101/api/v1" />
+          <button type="submit" class="btn btn-secondary">Save API Base</button>
+        </form>
+        <p class="muted">Local default: <code>http://127.0.0.1:8101/api/v1</code>.</p>
+      </section>
+
+      <section class="panel animate delay-2">
+        <h2>Authentication</h2>
+        <form id="loginForm" class="form-stack">
+          <label for="emailInput">Email</label>
+          <input id="emailInput" type="email" value="admin@example.com" required />
+          <label for="passwordInput">Password</label>
+          <input id="passwordInput" type="password" value="admin123" required />
+          <div class="button-row">
+            <button type="submit" class="btn">Sign In</button>
+            <button type="button" id="logoutBtn" class="btn btn-secondary">Sign Out</button>
+          </div>
+        </form>
+        <p class="muted"><strong>Token:</strong> <span id="tokenState">Not authenticated</span></p>
+      </section>
+
+      <section class="panel panel-wide animate delay-3">
+        <h2>Workflow Management</h2>
+        <form id="workflowForm" class="form-grid">
+          <label for="workflowName">Name</label>
+          <input id="workflowName" type="text" placeholder="Document Approval Flow" required />
+          <label for="workflowDescription">Description</label>
+          <input id="workflowDescription" type="text" placeholder="Routes contracts for review and approval" />
+          <label for="workflowStatus">Status</label>
+          <select id="workflowStatus">
+            <option value="active">active</option>
+            <option value="paused">paused</option>
+            <option value="archived">archived</option>
+          </select>
+          <button type="submit" class="btn">Create Workflow</button>
+        </form>
+        <div class="list-block">
+          <div class="list-header">
+            <h3>Available Workflows</h3>
+            <button id="refreshWorkflowsBtn" class="btn btn-secondary">Refresh</button>
+          </div>
+          <ul id="workflowsList" class="item-list"></ul>
+        </div>
+      </section>
+
+      <section class="panel panel-wide animate delay-4">
+        <h2>Document Processing</h2>
+        <form id="uploadForm" class="form-grid">
+          <label for="workflowSelect">Workflow</label>
+          <select id="workflowSelect">
+            <option value="">No workflow</option>
+          </select>
+          <label for="fileInput">Document</label>
+          <input id="fileInput" type="file" required />
+          <button type="submit" class="btn">Upload and Queue Indexing</button>
+        </form>
+
+        <div class="list-block">
+          <div class="list-header">
+            <h3>Documents</h3>
+            <button id="refreshDocumentsBtn" class="btn btn-secondary">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Filename</th>
+                  <th>Status</th>
+                  <th>Workflow</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="documentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-wide animate delay-5">
+        <h2>Search</h2>
+        <form id="searchForm" class="search-row">
+          <input id="searchInput" type="text" placeholder="Search extracted text..." required minlength="2" />
+          <button type="submit" class="btn">Search</button>
+        </form>
+        <ul id="searchResults" class="item-list search-results"></ul>
+      </section>
+    </main>
+
+    <footer class="status-bar">
+      <span id="statusText">Ready.</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

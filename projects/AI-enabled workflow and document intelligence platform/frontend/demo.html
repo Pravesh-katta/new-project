@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How It Works — AI Workflow Platform Demo</title>
+  <meta name="description" content="Interactive walkthrough showing how the AI-enabled workflow and document intelligence platform processes documents end-to-end." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./demo.css" />
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+
+<header class="hero">
+  <div>
+    <p class="eyebrow">Interactive Walkthrough</p>
+    <h1>How the Platform Works</h1>
+    <p class="hero-sub">Click each step to see the code flow, files involved, and what happens behind the scenes.</p>
+  </div>
+  <a href="./index.html" class="back-link">← Back to App</a>
+</header>
+
+<main>
+
+  <!-- ═══════════════ ARCHITECTURE OVERVIEW ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">00</span> Architecture Overview</h2>
+    <div class="arch-diagram">
+      <div class="arch-node arch-frontend" data-tip="Angular / Vanilla JS — served by Nginx on port 80">
+        <div class="arch-icon">🖥️</div>
+        <div class="arch-label">Frontend</div>
+        <div class="arch-tech">Nginx · Port 80</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node arch-alb" data-tip="Application Load Balancer routes /api/* to API, / to Frontend">
+        <div class="arch-icon">⚖️</div>
+        <div class="arch-label">ALB</div>
+        <div class="arch-tech">Ingress Router</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node arch-api" data-tip="FastAPI + Uvicorn — handles HTTP requests, JWT auth, dispatches tasks">
+        <div class="arch-icon">⚡</div>
+        <div class="arch-label">FastAPI</div>
+        <div class="arch-tech">Uvicorn · Port 8101</div>
+      </div>
+      <div class="arch-arrow arrow-down">↓</div>
+      <div class="arch-row-2">
+        <div class="arch-node arch-pg" data-tip="PostgreSQL via SQLAlchemy — stores workflows, documents, extracted text">
+          <div class="arch-icon">🐘</div>
+          <div class="arch-label">PostgreSQL</div>
+          <div class="arch-tech">RDS · SQLAlchemy</div>
+        </div>
+        <div class="arch-node arch-redis" data-tip="Redis — Celery message broker and result backend">
+          <div class="arch-icon">🔴</div>
+          <div class="arch-label">Redis</div>
+          <div class="arch-tech">ElastiCache · Broker</div>
+        </div>
+        <div class="arch-node arch-worker" data-tip="Celery worker — runs parse_and_index_document task">
+          <div class="arch-icon">🔧</div>
+          <div class="arch-label">Celery Worker</div>
+          <div class="arch-tech">Background Tasks</div>
+        </div>
+        <div class="arch-node arch-s3" data-tip="S3 — stores uploaded document files (PDFs, etc.)">
+          <div class="arch-icon">📦</div>
+          <div class="arch-label">S3</div>
+          <div class="arch-tech">Object Storage</div>
+        </div>
+        <div class="arch-node arch-os" data-tip="OpenSearch — full-text search index with BM25 scoring">
+          <div class="arch-icon">🔍</div>
+          <div class="arch-label">OpenSearch</div>
+          <div class="arch-tech">Search Engine</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STEP 1: STARTUP ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">01</span> Server Startup</h2>
+    <p class="step-desc">When the backend starts, <code>main.py</code> is the entry point. It creates the FastAPI app, adds middleware, creates database tables, and mounts all API routes.</p>
+    <div class="flow-card">
+      <div class="flow-trigger">$ uvicorn app.main:app --port 8101</div>
+      <div class="flow-steps">
+        <div class="flow-step" data-file="main.py">
+          <div class="step-badge">main.py</div>
+          <div class="step-body">
+            <div class="step-action">Create FastAPI instance + CORS middleware</div>
+            <pre class="code-block"><code>app = FastAPI(title="AI Workflow Platform")
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins)</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step" data-file="session.py">
+          <div class="step-badge">db/session.py</div>
+          <div class="step-body">
+            <div class="step-action">Create SQLAlchemy engine + session factory</div>
+            <pre class="code-block"><code>engine = create_engine(settings.sqlalchemy_database_url)
+SessionLocal = sessionmaker(bind=engine)</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step" data-file="main.py">
+          <div class="step-badge">main.py → startup</div>
+          <div class="step-body">
+            <div class="step-action">Auto-create tables: workflows, documents</div>
+            <pre class="code-block"><code>Base.metadata.create_all(bind=engine)
+# Creates tables from models/workflow.py + models/document.py</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step" data-file="router.py">
+          <div class="step-badge">api/router.py</div>
+          <div class="step-body">
+            <div class="step-action">Mount all route modules</div>
+            <pre class="code-block"><code>api_router.include_router(health_router)    # /health
+api_router.include_router(auth_router)      # /auth
+api_router.include_router(workflows_router) # /workflows
+api_router.include_router(documents_router) # /documents</code></pre>
+          </div>
+        </div>
+      </div>
+      <div class="flow-result">✅ Server listening on port 8101 — Swagger docs at /docs</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STEP 2: LOGIN ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">02</span> Authentication (JWT Login)</h2>
+    <p class="step-desc">User sends email + password. Server verifies credentials, creates a JWT token signed with a secret key, and returns it. Frontend stores the token in localStorage.</p>
+    <div class="flow-card">
+      <div class="flow-trigger">POST /api/v1/auth/token → { username, password }</div>
+      <div class="flow-steps">
+        <div class="flow-step" data-file="auth.py">
+          <div class="step-badge">api/auth.py</div>
+          <div class="step-body">
+            <div class="step-action">Verify username + password against settings</div>
+            <pre class="code-block"><code>if form_data.username != settings.demo_user_email 
+   or form_data.password != settings.demo_user_password:
+    raise HTTPException(401, "Incorrect username or password")</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step" data-file="security.py">
+          <div class="step-badge">core/security.py</div>
+          <div class="step-body">
+            <div class="step-action">Create JWT with email + 60-min expiry</div>
+            <pre class="code-block"><code>payload = {"sub": "admin@example.com", "exp": now + 60min}
+token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step frontend-step" data-file="app.js">
+          <div class="step-badge file-frontend">app.js (frontend)</div>
+          <div class="step-body">
+            <div class="step-action">Store token → use in all future API calls</div>
+            <pre class="code-block"><code>setToken(tokenData.access_token);
+// Stored in localStorage
+// Every request: Authorization: Bearer eyJhbG...</code></pre>
+          </div>
+        </div>
+      </div>
+      <div class="flow-result">🔐 User authenticated — token valid for 60 minutes</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STEP 3: PROTECT ENDPOINTS ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">03</span> Endpoint Protection (Every Request)</h2>
+    <p class="step-desc">Every protected endpoint uses FastAPI's <code>Depends(get_current_user_email)</code>. This automatically runs before the endpoint logic — extracting and validating the JWT.</p>
+    <div class="flow-card">
+      <div class="flow-trigger">Any request with Authorization: Bearer &lt;token&gt;</div>
+      <div class="flow-steps">
+        <div class="flow-step" data-file="deps.py">
+          <div class="step-badge">api/deps.py</div>
+          <div class="step-body">
+            <div class="step-action">Extract token → decode → return user email</div>
+            <pre class="code-block"><code>oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+def get_current_user_email(token = Depends(oauth2_scheme)):
+    email = decode_access_token(token)  # → security.py
+    if not email:
+        raise HTTPException(401, "Invalid authentication token")
+    return email  # "admin@example.com"</code></pre>
+          </div>
+        </div>
+      </div>
+      <div class="flow-result">✅ Valid → endpoint runs &nbsp; | &nbsp; ❌ Invalid/Expired → 401 Unauthorized</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STEP 4: DOCUMENT UPLOAD ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">04</span> Document Upload + Async Processing</h2>
+    <p class="step-desc">This is the core flow. Upload triggers: file storage → DB record → Celery task. The worker then reads the file, extracts text, and indexes it into OpenSearch — all in the background.</p>
+
+    <div class="flow-card flow-card-highlight">
+      <div class="flow-trigger">POST /api/v1/documents/upload → FormData(file)</div>
+
+      <div class="flow-phases">
+        <div class="phase">
+          <div class="phase-label">Phase 1: API (synchronous — user waits)</div>
+          <div class="flow-steps">
+            <div class="flow-step" data-file="documents.py">
+              <div class="step-badge">api/documents.py</div>
+              <div class="step-body">
+                <div class="step-action">Save file to S3</div>
+                <pre class="code-block"><code>storage = StorageService()
+object_key = storage.save_bytes(file.filename, content)
+# → S3: s3.put_object(Bucket, Key, Body)
+# → Fallback: write to /app/data/documents/</code></pre>
+              </div>
+            </div>
+            <div class="flow-connector">↓</div>
+            <div class="flow-step" data-file="documents.py">
+              <div class="step-badge">api/documents.py</div>
+              <div class="step-body">
+                <div class="step-action">Create Document record (status: "uploaded")</div>
+                <pre class="code-block"><code>document = Document(
+    filename="contract.pdf",
+    object_key="uuid-contract.pdf",
+    status="uploaded",    # ← initial status
+    workflow_id=workflow_id,
+)
+db.add(document); db.commit()</code></pre>
+              </div>
+            </div>
+            <div class="flow-connector">↓</div>
+            <div class="flow-step" data-file="documents.py">
+              <div class="step-badge">api/documents.py</div>
+              <div class="step-body">
+                <div class="step-action">Dispatch Celery task → returns immediately</div>
+                <pre class="code-block"><code>task = parse_and_index_document.delay(document.id)
+# Task pushed to Redis queue
+# API returns 201 without waiting for processing
+return {document: {...}, task_id: task.id}</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phase-divider">
+          <span>⚡ API returns 201 to user — background processing begins</span>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 2: Celery Worker (asynchronous — user doesn't wait)</div>
+          <div class="flow-steps">
+            <div class="flow-step worker-step" data-file="document_tasks.py">
+              <div class="step-badge file-worker">tasks/document_tasks.py</div>
+              <div class="step-body">
+                <div class="step-action">Update status → "indexing"</div>
+                <pre class="code-block"><code>document = db.get(Document, document_id)
+document.status = "indexing"
+db.commit()</code></pre>
+              </div>
+            </div>
+            <div class="flow-connector">↓</div>
+            <div class="flow-step worker-step" data-file="document_tasks.py">
+              <div class="step-badge file-worker">tasks/document_tasks.py</div>
+              <div class="step-body">
+                <div class="step-action">Read file from S3 → extract text</div>
+                <pre class="code-block"><code>raw = storage.read_bytes(document.object_key)
+text = raw.decode("utf-8", errors="ignore")
+document.extracted_text = text[:200000]</code></pre>
+              </div>
+            </div>
+            <div class="flow-connector">↓</div>
+            <div class="flow-step worker-step" data-file="search.py">
+              <div class="step-badge file-worker">services/search.py</div>
+              <div class="step-body">
+                <div class="step-action">Index into OpenSearch</div>
+                <pre class="code-block"><code>search.index_document(
+    document_id=doc.id,
+    filename=doc.filename,
+    content=doc.extracted_text,
+)
+# OpenSearch stores: {document_id, filename, content}</code></pre>
+              </div>
+            </div>
+            <div class="flow-connector">↓</div>
+            <div class="flow-step worker-step" data-file="document_tasks.py">
+              <div class="step-badge file-worker">tasks/document_tasks.py</div>
+              <div class="step-body">
+                <div class="step-action">Update status → "indexed" ✅</div>
+                <pre class="code-block"><code>document.status = "indexed"  # or "index_failed" / "failed"
+db.commit()
+return {"status": "indexed", "document_id": doc.id}</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-lifecycle">
+        <div class="lifecycle-title">Document Status Lifecycle:</div>
+        <div class="lifecycle-flow">
+          <span class="ls ls-uploaded">uploaded</span>
+          <span class="ls-arrow">→</span>
+          <span class="ls ls-indexing">indexing</span>
+          <span class="ls-arrow">→</span>
+          <span class="ls ls-indexed">indexed ✅</span>
+          <span class="ls-arrow">/</span>
+          <span class="ls ls-failed">failed ❌</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STEP 5: SEARCH ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">05</span> Search (OpenSearch + DB Fallback)</h2>
+    <p class="step-desc">User types a query → OpenSearch returns ranked results with highlighted snippets. If OpenSearch isn't configured, falls back to PostgreSQL ILIKE.</p>
+    <div class="flow-card">
+      <div class="flow-trigger">GET /api/v1/documents/search/query?query=liability</div>
+      <div class="flow-steps">
+        <div class="flow-step" data-file="search.py">
+          <div class="step-badge">services/search.py</div>
+          <div class="step-body">
+            <div class="step-action">OpenSearch multi_match query</div>
+            <pre class="code-block"><code>query: {
+  multi_match: {
+    query: "liability",
+    fields: ["filename^2", "content"]  // filename boosted 2x
+  }
+},
+highlight: { fields: { content: {} } } // returns matching snippets</code></pre>
+          </div>
+        </div>
+        <div class="flow-connector">↓</div>
+        <div class="flow-step fallback-step" data-file="documents.py">
+          <div class="step-badge file-fallback">api/documents.py (fallback)</div>
+          <div class="step-body">
+            <div class="step-action">If OpenSearch unavailable → PostgreSQL text search</div>
+            <pre class="code-block"><code>Document.extracted_text.ilike(f"%{query}%")
+# Basic but works for local development</code></pre>
+          </div>
+        </div>
+      </div>
+      <div class="flow-result">🔍 Returns: [{filename, score, snippet}, ...] ranked by relevance</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FILE MAP ═══════════════ -->
+  <section class="section">
+    <h2 class="section-title"><span class="num">06</span> Complete File Map</h2>
+    <div class="file-tree">
+      <div class="tree-group">
+        <div class="tree-header">🟢 Entry Point</div>
+        <div class="tree-item entry">app/main.py <span class="tree-role">Creates FastAPI, mounts routes, creates tables</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">⚙️ Configuration</div>
+        <div class="tree-item">app/core/config.py <span class="tree-role">All settings: DB, Redis, S3, JWT, OpenSearch</span></div>
+        <div class="tree-item">app/core/security.py <span class="tree-role">JWT create/decode, bcrypt password hashing</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">🗄️ Database Layer</div>
+        <div class="tree-item">app/db/base.py <span class="tree-role">SQLAlchemy Base class</span></div>
+        <div class="tree-item">app/db/session.py <span class="tree-role">Engine + SessionLocal factory</span></div>
+        <div class="tree-item">app/models/workflow.py <span class="tree-role">Workflow table (id, name, status)</span></div>
+        <div class="tree-item">app/models/document.py <span class="tree-role">Document table (id, filename, status, text)</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">🔀 API Routes</div>
+        <div class="tree-item">app/api/router.py <span class="tree-role">Combines all route modules</span></div>
+        <div class="tree-item">app/api/deps.py <span class="tree-role">JWT validation dependency</span></div>
+        <div class="tree-item">app/api/auth.py <span class="tree-role">POST /auth/token → login</span></div>
+        <div class="tree-item">app/api/health.py <span class="tree-role">GET /health → status check</span></div>
+        <div class="tree-item">app/api/workflows.py <span class="tree-role">CRUD: create, list, update, delete workflows</span></div>
+        <div class="tree-item">app/api/documents.py <span class="tree-role">Upload, list, search, reindex documents</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">🔌 Services</div>
+        <div class="tree-item">app/services/storage.py <span class="tree-role">S3 + local fallback file storage</span></div>
+        <div class="tree-item">app/services/search.py <span class="tree-role">OpenSearch indexing + searching</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">⚡ Background Tasks</div>
+        <div class="tree-item">app/tasks/celery_app.py <span class="tree-role">Celery config (Redis broker)</span></div>
+        <div class="tree-item worker">app/tasks/document_tasks.py <span class="tree-role">parse_and_index_document task</span></div>
+      </div>
+      <div class="tree-group">
+        <div class="tree-header">📝 Schemas</div>
+        <div class="tree-item">app/schemas/auth.py <span class="tree-role">Token response model</span></div>
+        <div class="tree-item">app/schemas/document.py <span class="tree-role">DocumentRead, SearchResult models</span></div>
+        <div class="tree-item">app/schemas/workflow.py <span class="tree-role">WorkflowCreate/Read/Update models</span></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="demo-footer">
+  <span>AI-enabled Workflow &amp; Document Intelligence Platform — Taylor Morrison</span>
+</footer>
+
+</body>
+</html>
