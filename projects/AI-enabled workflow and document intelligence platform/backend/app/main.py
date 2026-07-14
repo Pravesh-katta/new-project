@@ -5,7 +5,7 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import document, workflow  # noqa: F401
+from app.models import construction, document, workflow  # noqa: F401
 
 
 settings = get_settings()
